@@ -1,0 +1,65 @@
+get live futures trading pattern in dataframe
+import requests
+import os
+import pandas as pd
+import json
+
+
+def get_futures():
+    
+# API key and secret
+    api_key = os.environ.get('Your binance api key')
+    api_secret = os.environ.get('your binance api secret')
+
+
+# API endpoint
+    endpoint = 'https://fapi.binance.com/fapi/v1/klines'
+
+# Parameters
+    symbol = input('Enter the pair to do futures : ')  # Change to the symbol you want
+    interval = input('Enter the time frame : ')  # Change to the interval you want
+    limit = int(input('Enter the limit of data : '))  # Change to the number of klines you want
+
+# API request
+    params = {'symbol': symbol, 'interval': interval, 'limit': limit}
+    response = requests.get(endpoint, params=params)
+
+# Convert response to JSON and extract klines
+    klines = response.json()
+
+# Convert klines to DataFrame
+    df = pd.DataFrame(klines, columns=['Open time', 'Open', 'High', 'Low', 'Close', 'Volume', 'Close time', 'Quote asset volume', 'Number of trades', 'Taker buy base asset volume', 'Taker buy quote asset volume', 'Ignore' ])
+
+# Convert columns to numeric types
+    df[['Open', 'High', 'Low', 'Close', 'Volume', 'Close time', 'Quote asset volume', 'Taker buy base asset volume', 'Taker buy quote asset volume']] = df[['Open', 'High', 'Low', 'Close', 'Volume', 'Close time', 'Quote asset volume', 'Taker buy base asset volume', 'Taker buy quote asset volume']].apply(pd.to_numeric)
+
+# Convert Open time and Close time to datetime
+    df['Open time'] = pd.to_datetime(df['Open time'], unit='ms')
+    df['Close time'] = pd.to_datetime(df['Close time'], unit='ms')
+    # Calculate the Taker sell quote asset volume
+    #taker_sell_quote_asset_volume = df['Quote asset volume'].sum() - df['Taker buy quote asset volume'].sum()
+
+
+# Set index to Open time
+#df.set_index('Open time', inplace=True)
+
+# Extract high and low prices from each kline
+    #highs = [float(kline[2]) for kline in klines]
+    #lows = [float(kline[3]) for kline in klines]
+
+# Get 24hr high and low prices
+    #last_24hr_high = max(highs[-limit:])
+    #last_24hr_low = min(lows[-limit:])
+
+# Print results
+#print(f'Last 24hr high price: {last_24hr_high:.10f} USDT')
+#print(f'Last 24hr low price: {last_24hr_low:.10f} USDT')
+
+    df['Taker sell_quote_asset_volume'] = df['Quote asset volume'] - df['Taker buy quote asset volume']
+
+    # Add two new columns with the same values
+    df['Taker sell_quote_asset_volume'] = df['Quote asset volume'] - df['Taker buy quote asset volume']
+    #df['24hr High '] = last_24hr_high
+    #df['24hr Low '] = last_24hr_low
+    df = df.reindex(columns=['Open time','Close time', 'Open', 'Close', 'High', 'Low', '24hr High ', '24hr Low ', 'Number of trades', 'Volume', 'Taker buy base asset volume', 'Taker buy quote asset volume', 'Taker sell_quote_asset_volume','Quote asset volume'])
+    return df
